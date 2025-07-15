@@ -2,9 +2,9 @@ datasets/**/*   # 递归忽略所有子目录内容
 !datasets/      # 保留datasets文件夹
 !datasets/**/   # 保留所有子文件夹结构（仅空目录）
 pretrained_models/**/*   # 递归忽略所有子目录内容
-!pretrained_models/      # 保留datasets文件夹
-!pretrained_models/**/   # 保留所有子文件夹结构（仅空目录）
+!pretrained_models/      # pretrained_models
 output/*
+!output/
 *.log
 *.pt
 *.pth
@@ -425,3 +425,4 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+/test_scripts/
