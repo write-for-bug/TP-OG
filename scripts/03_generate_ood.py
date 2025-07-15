@@ -20,6 +20,8 @@ def config():
     parser.add_argument("--sd_model", type=str, default="SG161222/Realistic_Vision_V5.1_noVAE")
     parser.add_argument("--vae", type=str, default="stabilityai/sd-vae-ft-mse")
     parser.add_argument("--n_class", type=int, default=100)
+    parser.add_argument("--noisy_scale", type=float, default=0.5)
+    parser.add_argument("--temperature", type=float, default=20.0)
     return parser.parse_args()
 if __name__ == "__main__":
     args = config()
@@ -33,13 +35,15 @@ if __name__ == "__main__":
     vae = args.vae
     seed = args.seed
     n_class = args.n_class
+    noisy_scale = args.noisy_scale
+    temperature = args.temperature
 
     es = EmbedsSampler(feature_path, device)
     og = OODGenerator(sd_model=sd_model,vae_model=vae,device=device)
     k =args.k
     n_components = args.n_components
     # 选择采样方式
-    sampled_embeds = es.density_based_sample_pca(k=k, n_samples=fake_num_per_class, n_components=n_components,seed=seed)
+    sampled_embeds = es.density_based_sample_pca(k=k, n_samples=fake_num_per_class, n_components=n_components,noise_scale=noisy_scale,temperature=temperature,seed=seed)
 
     # 指定保存根目录
     save_dir = os.path.join(output_dir, dataset)

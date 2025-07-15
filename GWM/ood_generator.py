@@ -28,20 +28,19 @@ class OODGenerator:
     )
 
   def generate_images_with_name(self,ip_adapter_image_embeds,class_name,width=256,height=256,seed=None):
-    generator = torch.Generator(device=self.device).manual_seed(seed)
+    # generator = torch.Generator(device=self.device).manual_seed(seed)
     crop_size = width/8
     images = self.sdpipe(
       prompt=f"8K resolution,Ultra high definition",
       negative_prompt=f"{class_name}",
       num_images_per_prompt=1,
       ip_adapter_image_embeds=ip_adapter_image_embeds,
-      num_inference_steps=48,
-      guidance_scale=10,
+      num_inference_steps=42,
+      guidance_scale=5,
       eta=0.3,
       ip_adapter_scale=0.8,
       height = height + crop_size*2,
       width = width + crop_size*2,
-      generator=generator,
       do_classifier_free_guidance=True,
     ).images
 

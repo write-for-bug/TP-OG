@@ -7,10 +7,9 @@ export PYTHONPATH=$(pwd)
 python --version
 
 
-# 运行测试脚本
 echo "Running scripts/03_generate_ood.py ..."
-python scripts/03_generate_ood.py --dataset ImageNet100 --output_dir "./fake_ood_examples" --fake_num_per_class 10 --seed 41 --n_class 10 \
---k 50 --fake_num_per_class 5
+python scripts/03_generate_ood.py --dataset ImageNet100 --output_dir "./fake_ood_examples" --fake_num_per_class 10 --seed 0 --n_class 10 \
+--k 100 --fake_num_per_class 5 --noisy_scale 0.1 --temperature -0.5
 
 # 提示信息
 echo "Press any key to continue..."

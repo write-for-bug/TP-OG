@@ -8,7 +8,7 @@ python --version
 
 
 # 运行测试脚本
-echo "Running test_scripts/ood_generator_test.py ..."
+echo "Running test_scripts/shell_test.py ..."
 python test_scripts/shell_test.py
 
 # 提示信息

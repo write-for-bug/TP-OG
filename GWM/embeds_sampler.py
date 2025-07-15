@@ -15,12 +15,12 @@ class EmbedsSampler:
       first_embeds[k] = [torch.cat([neg_embeds[None,:],pos_embeds[None,:]],dim=0).to(self.device)]
     return first_embeds
 
-  def mean(self):
+  def mean(self,n_samples=50):
     mean_embeds = {}
     for k,v in self.vif.items():
       pos_embeds = v.mean(dim=0)[None,:]
       neg_embeds = torch.zeros_like(pos_embeds)
-      mean_embeds[k] = [torch.cat([neg_embeds[None,:],pos_embeds[None,:]],dim=0).to(self.device)]
+      mean_embeds[k] = [[torch.cat([neg_embeds[None,:],pos_embeds[None,:]],dim=0).to(self.device)]]*n_samples
     return mean_embeds
 
   def high_density(self):
@@ -117,56 +117,41 @@ class EmbedsSampler:
           synthetic_embeds[class_name] = [torch.cat([neg_embeds[None, :], pos_embeds[None, :]], dim=0).to(self.device)]
       return synthetic_embeds
 
-  def density_based_sample(self, k=10, n_samples=1):
-      import torch
-      synthetic_embeds = {}
-      for class_name, v in self.vif.items():
-          # v: [n, d]
-          n, d = v.shape
-          # 计算距离矩阵
-          dist_matrix = torch.cdist(v, v)  # [n, n]
-          # 对每个点，取第k近邻的距离（排除自己）
-          knn_dists, _ = torch.topk(dist_matrix, k=k+1, largest=False)  # [n, k+1]
-          knn_dists = knn_dists[:, 1:]  # 去掉自己
-          density = 1.0 / (knn_dists.mean(dim=1) + 1e-8)  # 密度估计
-          # 概率权重：密度的倒数，归一化
-          # prob = (density + 1e-8)
-          prob = (1.0 / (density + 1e-8))
-          prob = prob / prob.sum()
-          # 按概率采样
-          idx = torch.multinomial(prob, n_samples, replacement=False)
-          sampled = v[idx]
-          # 拼接0向量
-          result = []
-          for s in sampled:
-              pos_embeds = s[None, :]
-              neg_embeds = torch.zeros_like(pos_embeds)
-              result.append([torch.cat([neg_embeds[None, :], pos_embeds[None, :]], dim=0).to(self.device)])
-          synthetic_embeds[class_name] = deepcopy(result)
-      return synthetic_embeds
 
-  def density_based_sample_pca(self, k=50, n_samples=10, n_components=50,seed=None):
+  def density_based_sample_pca(self, k=50, n_samples=10, n_components=0.9, seed=None, noise_scale=0.1,temperature=1):
       from sklearn.decomposition import PCA
       synthetic_embeds = {}
       for class_name, v in self.vif.items():
-          # 降维到50维
+          # 降维到n_components维
           pca = PCA(n_components=n_components)
           v_low = torch.tensor(pca.fit_transform(v.cpu().numpy()), device=v.device)
           # 在低维空间做密度估计
           dist_matrix = torch.cdist(v_low, v_low)
           knn_dists, _ = torch.topk(dist_matrix, k=k+1, largest=False)
           knn_dists = knn_dists[:, 1:]
-          # density = 1.0 / (knn_dists.mean(dim=1) + 1e-8)
-          # prob = (1.0 / (density + 1e-8))
-          density = torch.exp(-knn_dists.mean(dim=1))  # 指数平滑
+          '''temperature为正:低似然采样，越大越平滑越趋近均匀采样，越低在低密度区域越尖锐
+            temperature为负:高似然采样，绝对值越大越平滑越趋近均匀采样，越小在高密度区域越尖锐概率越大
+            为正时协变量偏移
+            为负时变为语义偏移
+          '''
+          assert temperature!=0
+          density = torch.exp(-knn_dists.mean(dim=1)/temperature)
           prob = density / (density.sum() + 1e-8)
-          idx = torch.multinomial(prob, n_samples, replacement=True,generator=torch.Generator(device=self.device).manual_seed(seed))
+          print(knn_dists.mean().item())
+          print(prob.max().item(),prob.min().item(),prob.mean().item())
+          # 采样
+          generator = torch.Generator(device=self.device).manual_seed(seed)  if seed is not None else None
+
+          idx = torch.multinomial(prob, n_samples, replacement=True, generator=generator)
           sampled = v[idx]  # 返回原始高维样本
-          # ... 拼接逻辑
+          # 对每个采样点加高斯扰动
           result = []
           for s in sampled:
-              pos_embeds = s[None, :]
+              noise = torch.randn_like(s) * noise_scale * s.std()
+              s_noised = s + noise
+              pos_embeds = s_noised[None, :]
               neg_embeds = torch.zeros_like(pos_embeds)
+              # neg_embeds = torch.randn_like(pos_embeds)
               result.append([torch.cat([neg_embeds[None, :], pos_embeds[None, :]], dim=0).to(self.device)])
           synthetic_embeds[class_name] = deepcopy(result)
       return synthetic_embeds
