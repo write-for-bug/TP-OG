@@ -4,6 +4,12 @@ datasets/**/*   # 递归忽略所有子目录内容
 pretrained_models/**/*   # 递归忽略所有子目录内容
 !pretrained_models/      # 保留datasets文件夹
 !pretrained_models/**/   # 保留所有子文件夹结构（仅空目录）
+output/*
+*.log
+*.pt
+*.pth
+*.bin
+.idea/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
