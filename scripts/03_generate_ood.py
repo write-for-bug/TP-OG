@@ -11,7 +11,7 @@ def config():
     parser = argparse.ArgumentParser(description='Generate fake ood data from extracted features.')
     parser.add_argument("--dataset",type=str,default='ImageNet100')
     parser.add_argument("--output_dir",type=str,default='./output/02_fake_ood')
-    parser.add_argument("--fake_num_per_class",type=int,default=5)
+    parser.add_argument("--fake_num_per_class",type=int,default=2)
     parser.add_argument("--feature_path",type=str,default="./output/01_extract_features/ImageNet100_features.pt")
     parser.add_argument("--device",type=str,default="cuda:0")
     parser.add_argument("--seed", type=int, default=42)
@@ -19,13 +19,13 @@ def config():
     parser.add_argument("--n_components", type=float, default=0.9)
     parser.add_argument("--sd_model", type=str, default="SG161222/Realistic_Vision_V5.1_noVAE")
     parser.add_argument("--vae", type=str, default="stabilityai/sd-vae-ft-mse")
-    parser.add_argument("--n_class", type=int, default=10)
+    parser.add_argument("--n_class", type=int, default=100)
     return parser.parse_args()
 if __name__ == "__main__":
     args = config()
     fake_num_per_class = args.fake_num_per_class
     output_dir = args.output_dir
-    dataset = "ImageNet100"
+    dataset = args.dataset
     device = args.device
     id_name_dict = load_id_name_dict()
     feature_path = args.feature_path
@@ -39,7 +39,7 @@ if __name__ == "__main__":
     k =args.k
     n_components = args.n_components
     # 选择采样方式
-    sampled_embeds = es.density_based_sample_pca(k=k, n_samples=fake_num_per_class, n_components=n_components)
+    sampled_embeds = es.density_based_sample_pca(k=k, n_samples=fake_num_per_class, n_components=n_components,seed=seed)
 
     # 指定保存根目录
     save_dir = os.path.join(output_dir, dataset)
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     sampled_keys = random.sample(list(sampled_embeds.keys()), min(n_class, len(sampled_embeds)))
     for synset in tqdm(sampled_keys):
         v = sampled_embeds[synset]
-        class_name = id_name_dict.get(synset)
+        class_name = id_name_dict[synset]
         class_dir = os.path.join(save_dir, synset)
         # 检查已存在的图片数量
         existing_count = 0
