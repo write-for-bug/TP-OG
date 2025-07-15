@@ -118,40 +118,31 @@ class EmbedsSampler:
       return synthetic_embeds
 
 
-  def density_based_sample_pca(self, k=50, n_samples=10, n_components=0.9, seed=None, noise_scale=0.1,temperature=1):
+  def density_based_sample_pca(self, k=50, n_samples=5, mean_group_size=10, n_components=0.9, seed=None, noise_scale=0.1, temperature=1):
       from sklearn.decomposition import PCA
       synthetic_embeds = {}
       for class_name, v in self.vif.items():
-          # 降维到n_components维
+          # 降维
           pca = PCA(n_components=n_components)
           v_low = torch.tensor(pca.fit_transform(v.cpu().numpy()), device=v.device)
-          # 在低维空间做密度估计
+          # 密度估计
           dist_matrix = torch.cdist(v_low, v_low)
           knn_dists, _ = torch.topk(dist_matrix, k=k+1, largest=False)
           knn_dists = knn_dists[:, 1:]
-          '''temperature为正:低似然采样，越大越平滑越趋近均匀采样，越低在低密度区域越尖锐
-            temperature为负:高似然采样，绝对值越大越平滑越趋近均匀采样，越小在高密度区域越尖锐概率越大
-            为正时协变量偏移
-            为负时变为语义偏移
-          '''
-          assert temperature!=0
-          density = torch.exp(-knn_dists.mean(dim=1)/temperature)
+          assert temperature != 0
+          density = torch.exp(-knn_dists.mean(dim=1) / temperature)
           prob = density / (density.sum() + 1e-8)
-          print(knn_dists.mean().item())
           print(prob.max().item(),prob.min().item(),prob.mean().item())
-          # 采样
-          generator = torch.Generator(device=self.device).manual_seed(seed)  if seed is not None else None
-
-          idx = torch.multinomial(prob, n_samples, replacement=True, generator=generator)
-          sampled = v[idx]  # 返回原始高维样本
-          # 对每个采样点加高斯扰动
           result = []
-          for s in sampled:
-              noise = torch.randn_like(s) * noise_scale * s.std()
-              s_noised = s + noise
+          for _ in range(n_samples):
+              # 每个样本都采 mean_group_size 个嵌入
+              idx = torch.multinomial(prob, mean_group_size, replacement=True)
+              sampled = v[idx]  # [mean_group_size, 1024]
+              mean_embed = sampled.mean(dim=0)
+              noise = torch.randn_like(mean_embed) * noise_scale * mean_embed.std()
+              s_noised = mean_embed + noise
               pos_embeds = s_noised[None, :]
               neg_embeds = torch.zeros_like(pos_embeds)
-              # neg_embeds = torch.randn_like(pos_embeds)
               result.append([torch.cat([neg_embeds[None, :], pos_embeds[None, :]], dim=0).to(self.device)])
           synthetic_embeds[class_name] = deepcopy(result)
       return synthetic_embeds

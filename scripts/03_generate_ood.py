@@ -22,6 +22,7 @@ def config():
     parser.add_argument("--n_class", type=int, default=100)
     parser.add_argument("--noisy_scale", type=float, default=0.5)
     parser.add_argument("--temperature", type=float, default=20.0)
+    parser.add_argument("--mean_group_size", type=int, default=200)
     return parser.parse_args()
 if __name__ == "__main__":
     args = config()
@@ -36,20 +37,27 @@ if __name__ == "__main__":
     seed = args.seed
     n_class = args.n_class
     noisy_scale = args.noisy_scale
+    mean_group_size = args.mean_group_size
     temperature = args.temperature
 
     es = EmbedsSampler(feature_path, device)
     og = OODGenerator(sd_model=sd_model,vae_model=vae,device=device)
     k =args.k
     n_components = args.n_components
-    # 选择采样方式
-    sampled_embeds = es.density_based_sample_pca(k=k, n_samples=fake_num_per_class, n_components=n_components,noise_scale=noisy_scale,temperature=temperature,seed=seed)
-
     # 指定保存根目录
     save_dir = os.path.join(output_dir, dataset)
     os.makedirs(save_dir, exist_ok=True)
 
-    random.seed(seed)
+
+    # 选择采样方式
+    sampled_embeds = es.density_based_sample_pca(k=k,
+                                                 n_samples=fake_num_per_class,
+                                                 n_components=n_components,
+                                                 noise_scale=noisy_scale,
+                                                 temperature=temperature,
+                                                 mean_group_size=50,
+                                                 )
+
     sampled_keys = random.sample(list(sampled_embeds.keys()), min(n_class, len(sampled_embeds)))
     for synset in tqdm(sampled_keys):
         v = sampled_embeds[synset]
@@ -74,7 +82,7 @@ if __name__ == "__main__":
             try:
                 # 使用对应的嵌入生成图片
                 embeds = v[i+existing_count]
-                images = og.generate_images_with_name(embeds, class_name,seed=seed)
+                images = og.generate_images_with_name(embeds, class_name)
                 for j, image in enumerate(images):
                     img_path = os.path.join(class_dir, f"{class_name}_{existing_count + i:04d}.jpeg")
                     image.save(img_path)
