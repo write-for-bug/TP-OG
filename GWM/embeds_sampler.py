@@ -145,7 +145,7 @@ class EmbedsSampler:
           synthetic_embeds[class_name] = deepcopy(result)
       return synthetic_embeds
 
-  def density_based_sample_pca(self, k=10, n_samples=1, n_components=50):
+  def density_based_sample_pca(self, k=50, n_samples=10, n_components=50):
       from sklearn.decomposition import PCA
       synthetic_embeds = {}
       for class_name, v in self.vif.items():
@@ -156,10 +156,11 @@ class EmbedsSampler:
           dist_matrix = torch.cdist(v_low, v_low)
           knn_dists, _ = torch.topk(dist_matrix, k=k+1, largest=False)
           knn_dists = knn_dists[:, 1:]
-          density = 1.0 / (knn_dists.mean(dim=1) + 1e-8)
-          prob = (1.0 / (density + 1e-8))
-          prob = prob / prob.sum()
-          idx = torch.multinomial(prob, n_samples, replacement=False)
+          # density = 1.0 / (knn_dists.mean(dim=1) + 1e-8)
+          # prob = (1.0 / (density + 1e-8))
+          density = torch.exp(-knn_dists.mean(dim=1))  # 指数平滑
+          prob = density / (density.sum() + 1e-8)
+          idx = torch.multinomial(prob, n_samples, replacement=True)
           sampled = v[idx]  # 返回原始高维样本
           # ... 拼接逻辑
           result = []
