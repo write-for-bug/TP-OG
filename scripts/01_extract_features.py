@@ -19,7 +19,6 @@ def config():
     return parser.parse_args()
 
 if __name__ =='__main__':
-  # torch.cuda.set_per_process_memory_fraction(0.8)  # 预留显存空间
   args = config()
   bs=args.batch_size
   device = args.device
