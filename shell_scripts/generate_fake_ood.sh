@@ -8,8 +8,8 @@ python --version
 
 
 echo "Running scripts/03_generate_ood.py ..."
-python scripts/03_generate_ood.py --dataset ImageNet100 --output_dir "./fake_ood_examples" --fake_num_per_class 3  --n_class 10 \
---k 200  --noise_scale 1 --temperature -0.3 --mean_group_size 50 --seed 42
+python scripts/03_generate_ood.py --dataset "ImageNet100"  --fake_num_per_class 1300  --n_class 100 \
+--k 500  --noise_scale 0 --temperature 1 --mean_group_size 100 --filter_percent 0.05 --seed 42
 
 # 提示信息
 echo "Press any key to continue..."
