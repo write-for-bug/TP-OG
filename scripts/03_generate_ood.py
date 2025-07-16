@@ -15,16 +15,20 @@ def config():
     parser.add_argument("--feature_path",type=str,default="./output/01_extract_features/ImageNet100_features.pt")
     parser.add_argument("--device",type=str,default="cuda:0")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--k", type=int, default=50)
+    parser.add_argument("--k", type=int, default=500)
     parser.add_argument("--n_components", type=float, default=0.9)
     parser.add_argument("--sd_model", type=str, default="SG161222/Realistic_Vision_V5.1_noVAE")
     parser.add_argument("--vae", type=str, default="stabilityai/sd-vae-ft-mse")
     parser.add_argument("--n_class", type=int, default=100)
-    parser.add_argument("--noisy_scale", type=float, default=0.5)
-    parser.add_argument("--temperature", type=float, default=20.0)
-    parser.add_argument("--mean_group_size", type=int, default=200)
+    parser.add_argument("--noise_scale", type=float, default=1)
+    parser.add_argument("--temperature", type=float, default=1)
+    parser.add_argument("--mean_group_size", type=int, default=30)
+    parser.add_argument("--filter_percent", type=float, default=0.1)
     return parser.parse_args()
 if __name__ == "__main__":
+    torch.backends.cudnn.deterministic = False  # 允许CuDNN使用非确定性算法
+    torch.backends.cudnn.benchmark = True  # 启用自动优化（引入随机性）
+
     args = config()
     fake_num_per_class = args.fake_num_per_class
     output_dir = args.output_dir
@@ -36,9 +40,10 @@ if __name__ == "__main__":
     vae = args.vae
     seed = args.seed
     n_class = args.n_class
-    noisy_scale = args.noisy_scale
+    noise_scale = args.noise_scale
     mean_group_size = args.mean_group_size
     temperature = args.temperature
+    filter_percent = args.filter_percent
 
     es = EmbedsSampler(feature_path, device)
     og = OODGenerator(sd_model=sd_model,vae_model=vae,device=device)
@@ -49,15 +54,22 @@ if __name__ == "__main__":
     os.makedirs(save_dir, exist_ok=True)
 
 
-    # 选择采样方式
-    sampled_embeds = es.density_based_sample_pca(k=k,
-                                                 n_samples=fake_num_per_class,
-                                                 n_components=n_components,
-                                                 noise_scale=noisy_scale,
-                                                 temperature=temperature,
-                                                 mean_group_size=50,
-                                                 )
-
+    # 欧式距离计算密度
+    # sampled_embeds = es.density_based_sample_pca(k=k,
+    #                                              n_samples=fake_num_per_class,
+    #                                              n_components=n_components,
+    #                                              noise_scale=noise_scale,
+    #                                              temperature=temperature,
+    #                                              mean_group_size=50,
+    #                                              )
+    # 余弦相似度计算密度
+    sampled_embeds = es.density_based_sample_cosine(k=k,
+                                                    n_samples=fake_num_per_class,
+                                                    temperature=temperature,
+                                                    mean_group_size=mean_group_size,
+                                                    noise_scale=noise_scale,
+                                                    filter_percent=filter_percent,)
+    random.seed(seed)
     sampled_keys = random.sample(list(sampled_embeds.keys()), min(n_class, len(sampled_embeds)))
     for synset in tqdm(sampled_keys):
         v = sampled_embeds[synset]
@@ -82,7 +94,7 @@ if __name__ == "__main__":
             try:
                 # 使用对应的嵌入生成图片
                 embeds = v[i+existing_count]
-                images = og.generate_images_with_name(embeds, class_name)
+                images = og.generate_images_with_name(embeds, class_name,seed=seed)
                 for j, image in enumerate(images):
                     img_path = os.path.join(class_dir, f"{class_name}_{existing_count + i:04d}.jpeg")
                     image.save(img_path)
