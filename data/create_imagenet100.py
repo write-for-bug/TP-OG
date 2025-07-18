@@ -5,7 +5,7 @@ from tqdm import tqdm
 # 路径配置
 json_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'imagenet1k-subset100.json')
 tar_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'datasets', 'ILSVRC2012_img_train')
-out_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'datasets', 'ImageNet100', 'train')
+out_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'datasets', 'ImageNet100_full', 'train')
 
 # 创建输出目录
 os.makedirs(out_dir, exist_ok=True)

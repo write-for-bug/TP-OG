@@ -11,7 +11,7 @@ import argparse
 
 def config():
     parser = argparse.ArgumentParser(description='Extract features by clip vision model with  projection to unet.Results will be saved in ./output/01_extract_features')
-    parser.add_argument("--dataset",type=str,default='ImageNet100')
+    parser.add_argument("--dataset",type=str,default='ImageNet100_full')
     parser.add_argument("--output_dir",type=str,default='01_extract_features')
     parser.add_argument("--batch_size",type=int,default=128)
     parser.add_argument("--save_file",type=str,default="ImageNet100_features")
@@ -28,10 +28,9 @@ if __name__ =='__main__':
   os.makedirs(save_dir,exist_ok=True)
   save_file=os.path.join(save_dir,f"{args.save_file}.pt")
   extractor = FeatureExtractor(cache_dir='./pretrained_models',device=device)
-  try:
-    dataset_root = DATASET_PATH_DICT[dataset]
-  except Exception as e:
-    print(str(e))
+
+  dataset_root = DATASET_PATH_DICT[dataset]
+
   dataset = OODDataset( root=dataset_root, 
                         split='train',
                         subset=None,
@@ -50,7 +49,7 @@ if __name__ =='__main__':
   for image_paths, label in tqdm(dataloader):
     class_id = label[0]
     with torch.amp.autocast('cuda'):
-      embeds = extractor.extract_features(image_paths).half()
+      embeds = extractor.extract_vision_features(image_paths).half()
     
     features[class_id].append(embeds.detach().cpu())
   for k,v in features.items():

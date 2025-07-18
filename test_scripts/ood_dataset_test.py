@@ -10,7 +10,7 @@ if __name__ == '__main__':
         transforms_v2.ToTensor(),
         transforms_v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
       dataset = OODDataset(
-        root='./datasets/ImageNet100',
+        root='./datasets/ImageNet100_full',
         split='train',
         subset=None,
         transform=transform,

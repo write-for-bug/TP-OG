@@ -9,7 +9,7 @@ class OODGenerator:
             cache_dir="./pretrained_models",
             vae_model = "stabilityai/sd-vae-ft-mse",
             device="cuda"):
-    vae = AutoencoderKL.from_pretrained(vae_model,cache_dir=cache_dir,torch_dtype=torch.float16)
+    vae = AutoencoderKL.from_pretrained(vae_model,cache_dir=cache_dir,torch_dtype=torch.float16,local_files_only=True,device=device)
     self.device = device
     self.sd_model = sd_model
     self.sdpipe = StableDiffusionPipeline.from_pretrained(
@@ -18,12 +18,15 @@ class OODGenerator:
                       cache_dir=cache_dir,
                       torch_dtype=torch.float16,
                       safety_checker=None,
+                      local_files_only=True
                      ).to(device)
     self.sdpipe._progress_bar_config={"disable": True}
     self.sdpipe.load_ip_adapter(
       ip_adapter,
+      device=self.device,
       subfolder="models",
       weight_name=adapter_weight_name,
+      local_files_only=True,
       cache_dir=cache_dir
     )
 
@@ -31,14 +34,13 @@ class OODGenerator:
 
     crop_size = width/8
     images = self.sdpipe(
-      prompt=f"high resolution",
-      negative_prompt=f"{class_name}",
+      prompt=f"ultra high resolution image",
+      negative_prompt=f"{class_name},face,human",
       num_images_per_prompt=1,
       ip_adapter_image_embeds=ip_adapter_image_embeds,
-      num_inference_steps=36,
-      guidance_scale=8,
-      eta=0.2,
-      ip_adapter_scale=0.6,
+      num_inference_steps=48,
+      guidance_scale=9,
+      ip_adapter_scale=0.3,
       height = height + crop_size*2,
       width = width + crop_size*2,
       do_classifier_free_guidance=True

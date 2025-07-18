@@ -2,7 +2,7 @@ from data import OODDataset,ClassOrderSampler
 from torch.utils.data import DataLoader
 if __name__ == '__main__':
   dataset = OODDataset(
-    root='./datasets/ImageNet100',
+    root='./datasets/ImageNet100_full',
     split='train',
     subset=None,
     return_type='path'

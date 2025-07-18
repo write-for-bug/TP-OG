@@ -2,6 +2,7 @@ import torch
 from utils import load_id_name_dict
 from copy import deepcopy
 from tqdm import tqdm
+from utils import in_place_print
 class EmbedsSampler:
   def __init__(self,feature_path:str,device='cuda'):
     self.device = device
@@ -73,6 +74,7 @@ class EmbedsSampler:
               mean_embed = sampled.mean(dim=0)
               noise = torch.randn_like(mean_embed) * noise_scale * mean_embed.std()
               s_noised = mean_embed + noise
+
               pos_embeds = s_noised[None, :]
               neg_embeds = torch.zeros_like(pos_embeds)
               result.append([torch.cat([neg_embeds[None, :], pos_embeds[None, :]], dim=0).to(self.device)])
@@ -81,12 +83,28 @@ class EmbedsSampler:
 
 
   def density_based_sample_cosine(
-    self, k=50, n_samples=5, mean_group_size=10, seed=None, noise_scale=0.1, temperature=1,
-    filter_percent=0.2, target_hit_min=0.05, target_hit_max=0.1, candidate_batch=20, max_iter=1000
-):
+    self, k=50, n_samples=5, mean_group_size=10, seed=None, noise_scale=0, temperature=1, target_hit_min=0, target_hit_max=0.15, candidate_batch=100, knn_threshold=0.4):
+    """
+    knn cosine distance:
+
+    :param k: knn cosine distance number
+    :param n_samples: how many samples to generate
+    :param mean_group_size: mean embeds from group size
+    :param seed: seed for random number generator
+    :param noise_scale: sampling noise scale
+    :param temperature: single sample probability control.Lower will return the edge sample,higher return samples on average.
+    :param filter_percent: (l,r),filter samples cosine distance between l and r quantile
+    :param target_hit_min: embeds hit rate should between target_hit_min and target_hit_max
+    :param target_hit_max: lower or higher hit rate will dynamically adjust current_noise_scale
+    :param candidate_batch: generate hit rate at start
+    :param knn_threshold: knn_mean的分界阈值，小于此值使用大阈值区间[0.3,0.4]，大于此值使用小阈值区间[0,0.05]
+    :return:
+    """
     synthetic_embeds = {}
-    for class_name, v in tqdm(self.vif.items(),desc="Sampling Embeds...",position=1,):
-        # if class_name not in ("n02797295"):continue
+    for class_name, v in tqdm(self.vif.items(),desc="Sampling Embeds",position=0,):
+
+        if load_id_name_dict()[class_name] not in ("Thunder snake","tarantula","Bookcase","groom","sandbar","yawl","Stone wall","pedestal","lumbermill","loafer","fountain","Container ship","Computer keyboard"):continue
+        print('\n\n')
         v_norm = v / (v.norm(dim=1, keepdim=True) + 1e-8)
         cosine_sim = torch.mm(v_norm, v_norm.t())
         cosine_dist = 1 - cosine_sim
@@ -95,17 +113,28 @@ class EmbedsSampler:
         knn_dists, _ = torch.topk(cosine_dist, k=k + 1, largest=False)
         knn_dists = knn_dists[:, 1:]
         all_knn_means = knn_dists.mean(dim=1)
-        sorted_knn_means, _ = torch.sort(all_knn_means, descending=True)
-        threshold_idx = max(0, int(len(sorted_knn_means) * filter_percent) - 1)
-        edge_threshold = sorted_knn_means[threshold_idx].item()
 
+        sorted_knn_means, _ = torch.sort(all_knn_means, descending=True)
+
+        # continue
+        knn_mean_val = all_knn_means.mean().item()
+        l_percent = torch.exp(-all_knn_means.mean()*9).item()
+        r_percent = torch.exp(-all_knn_means.mean()*7).item()
+
+        l_threshold_idx = int(k*l_percent)
+        r_threshold_idx = int(k*r_percent)
+
+
+        l_edge_threshold = sorted_knn_means[l_threshold_idx].item()
+        r_edge_threshold = sorted_knn_means[r_threshold_idx].item()+0.01
+        print(f"\nSampling {load_id_name_dict()[class_name]},")
+        print(f"knn_dist_mean:{knn_mean_val:.3f} | percent_range:[{l_percent:.3f},{r_percent:.3f}] | knn_threshold:[{r_edge_threshold:.3f},{l_edge_threshold:.3f}]    ")
         density = torch.exp(-self._min_max_scale(all_knn_means) / temperature)
         prob = density / (density.sum() + 1e-8)
-        generator = torch.Generator(device=self.device).manual_seed(seed) if seed is not None else None
-
+        # continue
         result = []
         cur_noise_scale = noise_scale
-        p_par = tqdm(desc=f"Sampling {load_id_name_dict()[class_name]}, noise={cur_noise_scale}",position=2,leave=False)
+        p_par = tqdm(total=n_samples,desc=f"noise={cur_noise_scale:2f}",position=1,leave=False)
         while len(result) < n_samples :
             # 批量采样
             batch_embeds = []
@@ -118,19 +147,27 @@ class EmbedsSampler:
                 s_noised = mean_embed + noise
                 s_noised_norm = s_noised / (s_noised.norm() + 1e-8)
                 dists = 1 - torch.mv(v_norm, s_noised_norm)
-                knn_mean = torch.topk(dists, k=k, largest=False).values.mean().item()
+                knn_mean = torch.topk(dists, k=k+1, largest=False).values.mean().item()
+                in_place_print(f"Sampled knn mean:{knn_mean:2f}")
+
+
                 batch_embeds.append(s_noised)
                 batch_knn_means.append(knn_mean)
             # 命中边缘的
-            hits = [(e, m) for e, m in zip(batch_embeds, batch_knn_means) if m >= edge_threshold]
+
+            hits = [(e, m) for e, m in zip(batch_embeds, batch_knn_means) if r_edge_threshold<= m <= l_edge_threshold]
             hit_rate = len(hits) / candidate_batch
             # 动态调整noise_scale
-            if hit_rate < target_hit_min:
-                cur_noise_scale += 0.02
-            elif hit_rate > target_hit_max:
-                cur_noise_scale -= 0.04
+            delta = max(0.005, abs(hit_rate - (target_hit_min + target_hit_max) / 2) * 0.1)
+            if hit_rate <= target_hit_min or sum(batch_knn_means)/candidate_batch < r_edge_threshold :
+                cur_noise_scale += delta
+                p_par.set_description( f"Sampling {load_id_name_dict()[class_name]}, noise={cur_noise_scale:2f} , current hit rate: {hit_rate:2f}",refresh=True)
+            if hit_rate >= target_hit_max or sum(batch_knn_means)/candidate_batch > l_edge_threshold :
+                cur_noise_scale = max(0, cur_noise_scale - 5*delta)
+                p_par.set_description( f"Sampling {load_id_name_dict()[class_name]}, noise={cur_noise_scale:2f} , current hit rate: {hit_rate:2f}",refresh=True)
             # 添加命中样本
             for e, m in hits:
+
                 if len(result) < n_samples:
                     p_par.update(1)
                     pos_embeds = e[None, :]
@@ -144,7 +181,7 @@ class EmbedsSampler:
  
 if __name__=="__main__":
   device = 'cuda' if torch.cuda.is_available() else 'cpu'
-  feature_path = './output/01_extract_features/ImageNet100/ImageNet100.pt'
+  feature_path = './output/01_extract_features/ImageNet100_full/ImageNet100_full.pt'
   es = EmbedsSampler(feature_path,device=device)
   mean = es.first()
   for k,v in mean.items():

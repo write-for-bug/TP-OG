@@ -21,7 +21,7 @@ def visualize(X,y,output_dir='/content/temp'):
 
 if __name__ == "__main__":
   N = 5
-  dataset = 'ImageNet100'
+  dataset = 'ImageNet100_full'
   device = 'cpu'
   feature_dir =  os.path.join("./output/01_extract_features",dataset,"features")
   id_name_dict = load_id_name_dict()

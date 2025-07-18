@@ -15,11 +15,26 @@ def load_id_name_dict():
 
 '''存储数据集的路径,OpenOOD的路径结构不一样'''
 DATASET_PATH_DICT = {
-    "ImageNet100": "./datasets/ImageNet100",
+    "ImageNet100_full": "./datasets/ImageNet100_full",
 
 }
 
+import contextlib
 
+import contextlib
+import sys
+
+
+def in_place_print(*args, **kwargs):
+    """原地打印并自动清除"""
+    sep = kwargs.get('sep', ' ')
+    end = kwargs.get('end', '')
+    flush = kwargs.get('flush', True)
+
+    output = sep.join(str(arg) for arg in args) + end
+    sys.stdout.write('\r' + output)
+    if flush:
+        sys.stdout.flush()
 
 
 
