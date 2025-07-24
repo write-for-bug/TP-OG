@@ -83,7 +83,7 @@ class EmbedsSampler:
 
 
   def density_based_sample_cosine(
-    self, k=50, n_samples=5, mean_group_size=10, seed=None, noise_scale=0, temperature=1, target_hit_min=0, target_hit_max=0.15, candidate_batch=100, knn_threshold=0.4):
+    self, k=50, n_samples=5, mean_group_size=10, seed=None, noise_scale=0, temperature=1, target_hit_min=0, target_hit_max=0.05, candidate_batch=100, knn_threshold=0.4):
     """
     knn cosine distance:
 
@@ -101,9 +101,9 @@ class EmbedsSampler:
     :return:
     """
     synthetic_embeds = {}
-    for class_name, v in tqdm(self.vif.items(),desc="Sampling Embeds",position=0,):
-
-        if load_id_name_dict()[class_name] not in ("Thunder snake","tarantula","Bookcase","groom","sandbar","yawl","Stone wall","pedestal","lumbermill","loafer","fountain","Container ship","Computer keyboard"):continue
+    for class_name, v in tqdm(self.vif.items(),desc="Sampling Embeds",position=0,leave=False):
+        if class_name not in['n04557648','n03649909']:continue
+        # if load_id_name_dict()[class_name] not in ("Thunder snake","tarantula","Bookcase","groom","sandbar","yawl","Stone wall","pedestal","lumbermill","loafer","fountain","Container ship","Computer keyboard"):continue
         print('\n\n')
         v_norm = v / (v.norm(dim=1, keepdim=True) + 1e-8)
         cosine_sim = torch.mm(v_norm, v_norm.t())
@@ -118,17 +118,17 @@ class EmbedsSampler:
 
         # continue
         knn_mean_val = all_knn_means.mean().item()
-        l_percent = torch.exp(-all_knn_means.mean()*9).item()
-        r_percent = torch.exp(-all_knn_means.mean()*7).item()
+        l_percent = torch.exp(-all_knn_means.mean()*10).item()
+        r_percent = torch.exp(-all_knn_means.mean()*5).item()
 
         l_threshold_idx = int(k*l_percent)
         r_threshold_idx = int(k*r_percent)
 
 
         l_edge_threshold = sorted_knn_means[l_threshold_idx].item()
-        r_edge_threshold = sorted_knn_means[r_threshold_idx].item()+0.01
-        print(f"\nSampling {load_id_name_dict()[class_name]},")
-        print(f"knn_dist_mean:{knn_mean_val:.3f} | percent_range:[{l_percent:.3f},{r_percent:.3f}] | knn_threshold:[{r_edge_threshold:.3f},{l_edge_threshold:.3f}]    ")
+        r_edge_threshold = sorted_knn_means[r_threshold_idx].item()
+        in_place_print(f"\nSampling {load_id_name_dict()[class_name]},")
+        in_place_print(f"knn_dist_mean:{knn_mean_val:.3f} | percent_range:[{l_percent:.3f},{r_percent:.3f}] | knn_threshold:[{r_edge_threshold:.3f},{l_edge_threshold:.3f}]    ")
         density = torch.exp(-self._min_max_scale(all_knn_means) / temperature)
         prob = density / (density.sum() + 1e-8)
         # continue
@@ -161,10 +161,10 @@ class EmbedsSampler:
             delta = max(0.005, abs(hit_rate - (target_hit_min + target_hit_max) / 2) * 0.1)
             if hit_rate <= target_hit_min or sum(batch_knn_means)/candidate_batch < r_edge_threshold :
                 cur_noise_scale += delta
-                p_par.set_description( f"Sampling {load_id_name_dict()[class_name]}, noise={cur_noise_scale:2f} , current hit rate: {hit_rate:2f}",refresh=True)
+                p_par.set_description( f"Sampling {load_id_name_dict()[class_name]}, noise={cur_noise_scale:2f} , current hit rate: {hit_rate:2f}",refresh=False)
             if hit_rate >= target_hit_max or sum(batch_knn_means)/candidate_batch > l_edge_threshold :
                 cur_noise_scale = max(0, cur_noise_scale - 5*delta)
-                p_par.set_description( f"Sampling {load_id_name_dict()[class_name]}, noise={cur_noise_scale:2f} , current hit rate: {hit_rate:2f}",refresh=True)
+                p_par.set_description( f"Sampling {load_id_name_dict()[class_name]}, noise={cur_noise_scale:2f} , current hit rate: {hit_rate:2f}",refresh=False)
             # 添加命中样本
             for e, m in hits:
 

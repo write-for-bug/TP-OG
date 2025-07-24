@@ -34,13 +34,13 @@ class OODGenerator:
 
     crop_size = width/8
     images = self.sdpipe(
-      prompt=f"ultra high resolution image",
+      prompt=f"ultra high resolution image of anything",
       negative_prompt=f"{class_name},face,human",
       num_images_per_prompt=1,
       ip_adapter_image_embeds=ip_adapter_image_embeds,
-      num_inference_steps=48,
-      guidance_scale=9,
-      ip_adapter_scale=0.3,
+      num_inference_steps=50,
+      guidance_scale=7.5,
+      ip_adapter_scale=0.5,
       height = height + crop_size*2,
       width = width + crop_size*2,
       do_classifier_free_guidance=True

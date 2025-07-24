@@ -24,14 +24,16 @@ class OODDataset(Dataset):
     def __init__(self,
                  root: str,
                  split: str = 'train',
-                 subset: Optional[Tuple[str]] = None,
+                 ood_paths: Optional[List[str]] = None,
                  transform: Optional[object] = None,
                  fake_ood_dir: Optional[str] = None,
-                 return_type="Image"):
+                 return_type="tensor"):
 
         self.root = root
         self.split = split
-        self.subset = subset
+        self.id_cnt = 0
+        self.ood_cnt = 0
+        self.ood_sets = [ood_paths] if isinstance(ood_paths, str) else ood_paths
         if transform is None:
           self.transform = transforms_v2.Compose([
             transforms_v2.Resize((256,256)),
@@ -60,7 +62,8 @@ class OODDataset(Dataset):
         self._build_dataset_index()
 
         # 统计信息
-        print(f"Loaded {len(self)} samples | Classes: {len(self.class_to_idx)} ")
+        print(f"Loaded total {len(self)} samples | Classes: {len(self.class_to_idx)} ")
+        print(f"Loaded {self.id_cnt} ID samples| Loaded {self.ood_cnt} OOD samples")
 
     def _load_metadata(self, filename: str) -> dict:
         """加载YAML/JSON元数据文件"""
@@ -77,18 +80,14 @@ class OODDataset(Dataset):
     def _build_dataset_index(self):
         """构建数据集索引核心逻辑"""
         # 步骤1：加载主数据集
-        if self.subset:
-            for data_subset in self.subset:
-                subset_path = os.path.join(self.root, self.split, data_subset)
-                self._load_samples(subset_path,data_subset)
+        self._load_imagenet_structure()
+        # 步骤2：加载ood
+        if self.ood_sets is not None:
+            for ood_set in self.ood_sets:
+                self._load_samples(ood_set, 'OOD')
 
 
-        else:
-            self._load_imagenet_structure()
 
-        # 步骤2：加载fake_ood_dir (仅训练集)
-        if self.split == 'train' and self.fake_ood_dir:
-            self._load_fake_ood_samples()
 
     def _load_imagenet_structure(self):
         """回退到ImageNet数据结构"""
@@ -157,7 +156,10 @@ class OODDataset(Dataset):
 
         # 添加样本
         self.samples.append((path, class_name, risk_group, risk_value))
-
+        if risk_group == 'ID':
+            self.id_cnt += 1
+        if risk_group == 'OOD':
+            self.ood_cnt += 1
     def __getitem__(self, index: int):# -> Tuple[Union[torch.Tensor, Image.Image], Dict]:
         """获取样本（动态返回类型）"""
         path, class_name, risk_group, risk_value = self.samples[index]
