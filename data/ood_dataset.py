@@ -5,8 +5,8 @@ import yaml
 import torch
 from torch.utils.data import Dataset
 from torchvision.datasets.folder import default_loader
-from typing import Tuple, Dict, List, Optional, Union, Set
-from torchvision.transforms import v2 as transforms_v2
+from typing import Tuple, Dict, List, Optional, Union, Callable
+from torchvision import transforms
 from tqdm import tqdm
 class OODDataset(Dataset):
     """
@@ -25,7 +25,7 @@ class OODDataset(Dataset):
                  root: str,
                  split: str = 'train',
                  ood_paths: Optional[List[str]] = None,
-                 transform: Optional[object] = None,
+                 transform:Optional[Union[transforms.Compose, Callable]]  = None,
                  fake_ood_dir: Optional[str] = None,
                  return_type="tensor"):
 
@@ -35,10 +35,14 @@ class OODDataset(Dataset):
         self.ood_cnt = 0
         self.ood_sets = [ood_paths] if isinstance(ood_paths, str) else ood_paths
         if transform is None:
-          self.transform = transforms_v2.Compose([
-            transforms_v2.Resize((256,256)),
-            transforms_v2.ToDtype(torch.float32,scale=True)
-          ])
+            self.transform = transforms.Compose([
+                  transforms.Resize((opt.size, opt.size)),
+                  transforms.CenterCrop(opt.size),
+                  transforms.ToTensor(),
+                  transforms.Normalize(mean=mean, std=std),
+              ])
+        else :
+          self.transform = transform
         self.fake_ood_dir = fake_ood_dir
         self.loader = default_loader
         assert return_type in ("path","tensor")
@@ -170,9 +174,7 @@ class OODDataset(Dataset):
           return path,class_name
         elif self.return_type=="tensor":
           img = self.loader(path)
-          if self.transform:
-              image = self.transform(img)
-          image_data = image
+          image_data = self.transform(img)
 
           # 构建标签字典
           label_dict = {

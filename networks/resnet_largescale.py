@@ -492,17 +492,14 @@ model_dict = {
 
 
 class StandardResNet(nn.Module):
-    def __init__(self, name='resnet50', dataset='ImageNet100', pretrained=False):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
         super(StandardResNet, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun(pretrained)
-        if 'ImageNet100' in dataset:
-            # self.classifier = nn.Linear(dim_in,101)
-            self.classifier = nn.Linear(dim_in, 101)
-        elif 'cifar10' in dataset:
-            self.classifier = nn.Linear(dim_in, 11)
-        elif 'cifar100' in dataset:
-            self.classifier = nn.Linear(dim_in, 101)
+        if classifier is not None:
+            self.classifier = classifier
+        else:
+            self.classifier = nn.Linear(dim_in, class_num)
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -511,7 +508,7 @@ class StandardResNet(nn.Module):
 
 
 class SupStandardResNet(nn.Module):
-    def __init__(self, name='resnet50', dataset='ImageNet100', pretrained=False):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
         super(SupStandardResNet, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun(pretrained)
@@ -521,12 +518,10 @@ class SupStandardResNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(dim_in * 2, 768)
         )
-        if 'ImageNet100' in dataset:
-            self.classifier = nn.Linear(dim_in, 101)
-        elif 'cifar10' in dataset:
-            self.classifier = nn.Linear(dim_in, 11)
-        elif 'cifar100' in dataset:
-            self.classifier = nn.Linear(dim_in, 101)
+        if classifier is not None:
+            self.classifier = classifier
+        else:
+            self.classifier = nn.Linear(dim_in, class_num)
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -535,15 +530,14 @@ class SupStandardResNet(nn.Module):
 
 
 class StandardResNetOE(nn.Module):
-    def __init__(self, name='resnet50', dataset='ImageNet100', pretrained=False):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
         super(StandardResNetOE, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun(pretrained)
-        if 'ImageNet100' in dataset or 'cifar100' in dataset:
-            # self.classifier = nn.Linear(dim_in,101)
-            self.classifier = nn.Linear(dim_in, 100)
-        elif 'cifar10' in dataset:
-            self.classifier = nn.Linear(dim_in, 10)
+        if classifier is not None:
+            self.classifier = classifier
+        else:
+            self.classifier = nn.Linear(dim_in, class_num)
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -552,12 +546,14 @@ class StandardResNetOE(nn.Module):
 
 
 class StandardResNetBase(nn.Module):
-    def __init__(self, name='resnet50', dataset='ImageNet100_base', pretrained=False):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
         super(StandardResNetBase, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun(pretrained)
-        if 'ImageNet100' or 'imagenet100' in dataset:
-            self.classifier = nn.Linear(dim_in, 100)
+        if classifier is not None:
+            self.classifier = classifier
+        else:
+            self.classifier = nn.Linear(dim_in, class_num)
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -568,7 +564,7 @@ class StandardResNetBase(nn.Module):
 class SupConResNetLargeScale(nn.Module):
     """backbone + projection head"""
 
-    def __init__(self, name='resnet50', dataset='ImageNet100', feat_dim=128, pretrained=False):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
         super(SupConResNetLargeScale, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.name = name
@@ -579,10 +575,11 @@ class SupConResNetLargeScale(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(dim_in, 128)
         )
-        if 'ImageNet100' or 'cifar100' in dataset:
-            self.classifier = nn.Linear(dim_in, 101)
+        if classifier is not None:
+            self.classifier = classifier
         else:
-            self.classifier = nn.Linear(dim_in, 11)
+            self.classifier = nn.Linear(dim_in, class_num)
+
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -593,7 +590,7 @@ class SupConResNetLargeScale(nn.Module):
 class SupConResNetLargeScale_Normal(nn.Module):
     """backbone + projection head"""
 
-    def __init__(self, name='resnet50', head='mlp', dataset='ImageNet100', feat_dim=128, pretrained=False):
+    def __init__(self, name='resnet50',  dataset='ImageNet100', feat_dim=128, pretrained=False):
         super(SupConResNetLargeScale_Normal, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.name = name

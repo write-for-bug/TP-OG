@@ -1,2 +1,3 @@
 import torch
-a = torch.Tensor([1,2])
+print(torch.__version__)
+print(torch.cuda.is_available())
