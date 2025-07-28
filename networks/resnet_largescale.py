@@ -492,14 +492,11 @@ model_dict = {
 
 
 class StandardResNet(nn.Module):
-    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100):
         super(StandardResNet, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun(pretrained)
-        if classifier is not None:
-            self.classifier = classifier
-        else:
-            self.classifier = nn.Linear(dim_in, class_num)
+        self.classifier = nn.Linear(dim_in, class_num)
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -508,7 +505,7 @@ class StandardResNet(nn.Module):
 
 
 class SupStandardResNet(nn.Module):
-    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100):
         super(SupStandardResNet, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun(pretrained)
@@ -518,26 +515,23 @@ class SupStandardResNet(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(dim_in * 2, 768)
         )
-        if classifier is not None:
-            self.classifier = classifier
-        else:
-            self.classifier = nn.Linear(dim_in, class_num)
+
+        self.classifier = nn.Linear(dim_in, class_num)
 
     def forward(self, x):
         feat = self.encoder(x)
         feat = F.normalize(self.projection(feat), dim=1)
-        return feat
+        logits = self.classifier(feat)
+        return feat, logits
 
 
 class StandardResNetOE(nn.Module):
-    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100):
         super(StandardResNetOE, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun(pretrained)
-        if classifier is not None:
-            self.classifier = classifier
-        else:
-            self.classifier = nn.Linear(dim_in, class_num)
+
+        self.classifier = nn.Linear(dim_in, class_num)
 
     def forward(self, x):
         feat = self.encoder(x)
@@ -564,7 +558,7 @@ class StandardResNetBase(nn.Module):
 class SupConResNetLargeScale(nn.Module):
     """backbone + projection head"""
 
-    def __init__(self, name='resnet50', pretrained=False, class_num=100, classifier=None):
+    def __init__(self, name='resnet50', pretrained=False, class_num=100):
         super(SupConResNetLargeScale, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.name = name
@@ -575,16 +569,14 @@ class SupConResNetLargeScale(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(dim_in, 128)
         )
-        if classifier is not None:
-            self.classifier = classifier
-        else:
-            self.classifier = nn.Linear(dim_in, class_num)
+        self.classifier = nn.Linear(dim_in, class_num)
 
 
     def forward(self, x):
-        feat = self.encoder(x)
-        feat = F.normalize(self.head(feat), dim=1)
-        return feat
+        raw_feat = self.encoder(x)
+        proj_feat = F.normalize(self.projection(raw_feat), dim=1)
+        logits = self.classifier(raw_feat)
+        return proj_feat,logits
 
 
 class SupConResNetLargeScale_Normal(nn.Module):

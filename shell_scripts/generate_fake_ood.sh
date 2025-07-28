@@ -1,11 +1,8 @@
 #!/bin/bash
 
-# 进入项目根目录（假设脚本在 shell_scripts/ 下）
-
+# 进入项目根目录
 cd "$(dirname "$0")/.."
 export PYTHONPATH=$(pwd)
-python --version
-
 
 echo "Running scripts/03_generate_ood.py ..."
 python scripts/03_generate_ood.py --dataset "ImageNet100"  --fake_num_per_class 1000  --n_class 100 \

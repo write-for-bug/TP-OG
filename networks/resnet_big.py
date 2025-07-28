@@ -190,7 +190,7 @@ class StandardResnetEnergy_CIFAR(nn.Module):
 
 
 class SupStandardResnet_CIFAR(nn.Module):
-    def __init__(self, name='resent18', dataset='cifar10'):
+    def __init__(self, name='resent18',class_nums=100):
         super(SupStandardResnet_CIFAR, self).__init__()
         model_fun, dim_in = model_dict[name]
         self.encoder = model_fun()
@@ -200,10 +200,9 @@ class SupStandardResnet_CIFAR(nn.Module):
             nn.ReLU(inplace=True),
             nn.Linear(dim_in, 128)
         )
-        if dataset == 'cifar10':
-            self.classifier = nn.Linear(dim_in, 11)
-        elif dataset == 'cifar100':
-            self.classifier = nn.Linear(dim_in, 101)
+
+        self.classifier = nn.Linear(dim_in, class_nums)
+
 
     def forward(self, x):
         feat = self.encoder(x)

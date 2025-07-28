@@ -116,7 +116,6 @@ class EmbedsSampler:
 
         sorted_knn_means, _ = torch.sort(all_knn_means, descending=True)
 
-        # continue
         knn_mean_val = all_knn_means.mean().item()
         l_percent = torch.exp(-all_knn_means.mean()*10).item()
         r_percent = torch.exp(-all_knn_means.mean()*5).item()
@@ -129,8 +128,8 @@ class EmbedsSampler:
         r_edge_threshold = sorted_knn_means[r_threshold_idx].item()
         in_place_print(f"\nSampling {load_id_name_dict()[class_name]},")
         in_place_print(f"knn_dist_mean:{knn_mean_val:.3f} | percent_range:[{l_percent:.3f},{r_percent:.3f}] | knn_threshold:[{r_edge_threshold:.3f},{l_edge_threshold:.3f}]    ")
-        density = torch.exp(-self._min_max_scale(all_knn_means) / temperature)
-        prob = density / (density.sum() + 1e-8)
+    density = torch.exp(-self._min_max_scale(all_knn_means) / temperature)
+    prob = density / (density.sum() + 1e-8)
         # continue
         result = []
         cur_noise_scale = noise_scale
