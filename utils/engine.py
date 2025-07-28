@@ -75,12 +75,12 @@ class TrainEngine:
             if (idx + 1) % opt.accum_iter == 0 or (idx + 1) == len(train_loader):#梯度累加
                 loss_meter.update(loss.item(), bsz)
                 torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
-                
                 optimizer.step()
-                optimizer.zero_grad()
                 scheduler.step()
+                optimizer.zero_grad()
+
                 if (idx + 1) % opt.accum_iter != 0:continue
-                # 记录详细损失
+
                 global_step = epoch * len(train_loader) + idx
                 self.writer.add_scalar('train/loss_total', raw_loss, global_step)
                 self.writer.add_scalar('train/loss_ce', loss_dict['loss_ce'], global_step)
@@ -132,7 +132,6 @@ class TrainEngine:
                     id_labels = labels[id_mask]
                     id_bsz = id_images.shape[0]
                     
-                    # 重复标签以匹配TwoCropTransform的输出
                     id_labels = id_labels.repeat(2).cuda()
                     id_images = id_images.reshape(id_bsz*2, 3, 224, 224).cuda()
                     # 统一使用model()调用
@@ -140,11 +139,9 @@ class TrainEngine:
                     pred = output.data.max(1)[1]
                     correct += pred.eq(id_labels.data).sum().item()
                     total += id_labels.size(0)
-                    
-
                 
                 if opt.dry_run:break
-        return correct / total if total > 0 else 0.0
+        return correct / total
 
 class TestEngine:
     def __init__(self, writer,ood_label):
@@ -211,19 +208,15 @@ class TestEngine:
             for images, label_dict in tqdm(test_loader, desc="Test Acc"):
                 labels = label_dict['class_idx']
                 ood_mask = torch.tensor([x == 'OOD' for x in label_dict['risk_group']]).cuda()
-                # 只计算ID样本的准确率
-                id_mask = ~ood_mask
-                
-                if id_mask.sum() > 0:
-                    id_images = images[id_mask]
-                    id_labels = labels[id_mask]
-                    id_images = id_images.cuda()
-                    id_labels = id_labels.cuda()
-                    # 统一使用model()调用
-                    proj_features, output = model(id_images)
-                    pred = output.data.max(1)[1]
-                    correct += pred.eq(id_labels.data).sum().item()
-                    total += id_labels.size(0)
+                labels[ood_mask] = self.ood_label
+                bsz = labels.shape[0]
+                images = images.cuda()
+                labels = labels.cuda()
+                # 统一使用model()调用
+                proj_features, output = model(images)
+                pred = output.data.max(1)[1]
+                correct += pred.eq(labels.data).sum().item()
+                total += labels.size(0)
 
         return correct / total if total > 0 else 0.0
 

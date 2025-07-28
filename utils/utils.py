@@ -68,6 +68,7 @@ def train_acc(model, train_loader):
     return correct / (len(train_loader.dataset) * 2)
 
 def get_scheduler(opt, optimizer,total_batches ,warmup_from,warmup_to):
+    total_batches = total_batches//opt.accum_iter
     warmup_steps = opt.warm_epochs * total_batches
     warmup_scheduler = LinearLR(
         optimizer,
@@ -77,7 +78,7 @@ def get_scheduler(opt, optimizer,total_batches ,warmup_from,warmup_to):
     )
     main_scheduler = CosineAnnealingLR(
         optimizer,
-        T_max=opt.epochs * total_batches - warmup_steps,  # 剩余步数
+        T_max=(opt.epochs * total_batches - warmup_steps),  # 剩余步数
         eta_min=opt.learning_rate * (opt.lr_decay_rate ** 3)
     )
     scheduler = SequentialLR(

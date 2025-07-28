@@ -64,11 +64,7 @@ def parse_option():
 
     # 生成模型名
     opt.model_name = f'{opt.method}_{opt.dataset}_{opt.model}_lr_{opt.learning_rate}_decay_{opt.weight_decay}_bsz_{opt.batch_size}_expname_{opt.experiment_name}'
-    if opt.warm:
-        opt.model_name = f'{opt.model_name}_warm'
-        opt.warmup_from = 0.01
-        opt.warm_epochs = 10
-        opt.warmup_to = opt.learning_rate
+
 
     opt.save_folder = os.path.join(opt.model_path, opt.model_name)
     if not os.path.isdir(opt.save_folder):
@@ -179,7 +175,7 @@ def main():
     supcon_loss = SupConLoss(temperature=0.1).cuda()
     loss_criterion = BalancedOODLoss(
         id_weight=1.0,
-        ood_weight=0.1,  # 降低OOD权重
+        ood_weight=0.01,  # 降低OOD权重
         supcon_loss=supcon_loss,
         ood_label=opt.class_nums-1
     )
