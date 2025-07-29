@@ -28,4 +28,7 @@ vae_model = "stabilityai/sd-vae-ft-mse", `
   - 可以手动写或者用一些多模态模型生成
 
 
-后面在用原本的FodFoM的框架做训练和评估，但是我现存只有12GB只是把train代码跑通了
+老师可以帮帮忙吗不走平台写不出来论文了QAQ
+
+
+
