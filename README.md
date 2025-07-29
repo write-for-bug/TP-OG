@@ -27,7 +27,7 @@ vae_model = "stabilityai/sd-vae-ft-mse", `
 - water bottle可以写成Cylinder object或者container
   - 可以手动写或者用一些多模态模型生成
 
-
+# vx zljbyby0214
 老师可以帮帮忙吗不走平台写不出来论文了QAQ
 
 
